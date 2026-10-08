@@ -3,7 +3,7 @@
  * Caches core assets for offline usage on mobile and desktop
  */
 
-const CACHE_NAME = 'lumina-studio-v1';
+const CACHE_NAME = 'lumina-studio-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
