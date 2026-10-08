@@ -26,8 +26,8 @@
   --accent-red: #d94141;
 
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --menu-height: 38px;
-  --options-height: 36px;
+  --menu-height: 42px;
+  --options-height: 38px;
   --toolbar-width: 44px;
   --dock-width: 330px;
   --status-height: 26px;
@@ -63,17 +63,18 @@ body.theme-ps {
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 8px;
   z-index: 1000;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
+  white-space: nowrap;
 }
 
 .app-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-right: 15px;
+  gap: 6px;
+  margin-right: 12px;
   flex-shrink: 0;
 }
 
@@ -107,7 +108,7 @@ body.theme-ps {
   height: 100%;
   display: flex;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 10px;
   cursor: pointer;
   color: var(--text-main);
   font-size: 12px;
@@ -115,9 +116,15 @@ body.theme-ps {
   white-space: nowrap;
 }
 
-.menu-item:hover {
+.menu-item:hover,
+.menu-item.open {
   background-color: var(--bg-hover);
   color: var(--text-highlight);
+}
+
+.highlight-menu {
+  color: #31c8ff;
+  font-weight: 600;
 }
 
 .dropdown-menu {
@@ -126,15 +133,17 @@ body.theme-ps {
   top: 100%;
   left: 0;
   background-color: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
-  min-width: 220px;
-  border-radius: 0 0 4px 4px;
-  padding: 4px 0;
-  z-index: 9999;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.85);
+  min-width: 230px;
+  border-radius: 0 0 6px 6px;
+  padding: 6px 0;
+  z-index: 99999;
 }
 
-.menu-item:hover .dropdown-menu {
+/* Open dropdown on both hover AND click (.open class) */
+.menu-item:hover .dropdown-menu,
+.menu-item.open .dropdown-menu {
   display: block;
 }
 
@@ -143,7 +152,7 @@ body.theme-ps {
   text-align: left;
   background: none;
   border: none;
-  padding: 6px 14px;
+  padding: 8px 14px;
   color: var(--text-main);
   font-size: 12px;
   display: flex;
@@ -152,7 +161,8 @@ body.theme-ps {
   cursor: pointer;
 }
 
-.dropdown-menu button:hover {
+.dropdown-menu button:hover,
+.dropdown-menu button:active {
   background-color: var(--accent-ps);
   color: #fff;
 }
@@ -178,7 +188,7 @@ body.theme-ps {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -186,7 +196,7 @@ body.theme-ps {
   background: linear-gradient(135deg, #005a9c 0%, #008be3 100%);
   color: #fff;
   border: 1px solid #31c8ff;
-  padding: 5px 10px;
+  padding: 6px 10px;
   font-size: 11px;
   font-weight: 600;
   border-radius: 4px;
@@ -195,22 +205,15 @@ body.theme-ps {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-  animation: pulseInstall 2s infinite alternate;
-}
-
-@keyframes pulseInstall {
-  from { box-shadow: 0 0 4px rgba(49, 200, 255, 0.3); }
-  to { box-shadow: 0 0 10px rgba(49, 200, 255, 0.8); }
 }
 
 .btn-mobile-toggle-dock {
-  display: none;
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 4px 8px;
-  border-radius: 3px;
-  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -224,10 +227,10 @@ button {
   background-color: var(--accent-ps);
   color: #fff;
   border: 1px solid #1f8ad2;
-  padding: 5px 12px;
+  padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -237,9 +240,9 @@ button {
   background-color: var(--bg-input);
   color: var(--text-main);
   border: 1px solid var(--border-color);
-  padding: 5px 12px;
+  padding: 6px 10px;
   font-size: 12px;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -249,10 +252,10 @@ button {
   background-color: var(--accent-green);
   color: #fff;
   border: 1px solid #238636;
-  padding: 5px 12px;
+  padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -269,9 +272,9 @@ button {
   background: transparent;
   color: var(--text-main);
   border: 1px solid var(--border-light);
-  padding: 6px 12px;
+  padding: 7px 12px;
   font-size: 12px;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
 }
 .btn-outline:hover { background-color: var(--bg-hover); color: #fff; }
@@ -283,7 +286,7 @@ button {
 }
 
 .btn-sm {
-  padding: 3px 8px;
+  padding: 4px 8px;
   font-size: 11px;
 }
 
@@ -296,8 +299,8 @@ button {
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  gap: 15px;
+  padding: 0 10px;
+  gap: 12px;
   z-index: 900;
   overflow-x: auto;
   white-space: nowrap;
@@ -306,28 +309,29 @@ button {
 .tool-name-indicator {
   font-weight: 600;
   color: var(--accent-cyan);
-  padding-right: 12px;
+  padding-right: 10px;
   border-right: 1px solid var(--border-color);
-  font-size: 12px;
+  font-size: 11px;
   flex-shrink: 0;
 }
 
 .tool-options-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
 .tool-options-group label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: var(--text-dim);
+  font-size: 11px;
 }
 
 .tool-options-group input[type="range"] {
-  width: 80px;
+  width: 70px;
   accent-color: var(--accent-ps);
   cursor: pointer;
 }
@@ -339,7 +343,7 @@ button {
   color: var(--text-main);
   padding: 3px 6px;
   border-radius: 3px;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .opt-btn-toggle {
@@ -361,7 +365,7 @@ button {
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 3px;
   cursor: pointer;
   font-size: 11px;
@@ -389,14 +393,14 @@ button {
   flex-direction: column;
   align-items: center;
   padding: 6px 0;
-  gap: 3px;
+  gap: 4px;
   z-index: 800;
   overflow-y: auto;
 }
 
 .tool-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -414,7 +418,8 @@ button {
   height: 18px;
 }
 
-.tool-btn:hover {
+.tool-btn:hover,
+.tool-btn:active {
   background-color: var(--bg-hover);
   color: var(--text-highlight);
 }
@@ -503,7 +508,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 30px;
   background-image: 
     linear-gradient(45deg, #161616 25%, transparent 25%), 
     linear-gradient(-45deg, #161616 25%, transparent 25%), 
@@ -511,7 +516,7 @@ button {
     linear-gradient(-45deg, transparent 75%, #161616 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-  touch-action: none; /* Handled via JS touch events */
+  touch-action: none;
 }
 
 #canvas-workspace {
@@ -543,7 +548,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: 0 10px;
   font-size: 11px;
   color: var(--text-dim);
   z-index: 50;
@@ -552,7 +557,7 @@ button {
 .status-left, .status-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   white-space: nowrap;
 }
 
@@ -573,7 +578,7 @@ button {
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  z-index: 800;
+  z-index: 850;
   transition: transform 0.25s ease-in-out;
 }
 
@@ -586,7 +591,7 @@ button {
 
 .dock-tab {
   flex: 1;
-  padding: 8px 6px;
+  padding: 10px 6px;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -656,7 +661,7 @@ button {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   border-radius: 3px;
-  padding: 2px 4px;
+  padding: 3px 5px;
 }
 
 .opacity-wrapper input[type="range"] { width: 60px; }
@@ -731,8 +736,8 @@ button {
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  width: 26px;
-  height: 24px;
+  width: 28px;
+  height: 26px;
   border-radius: 3px;
   cursor: pointer;
   font-size: 12px;
@@ -801,7 +806,7 @@ button {
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 5px;
+  padding: 6px;
   border-radius: 3px;
   margin-bottom: 8px;
 }
@@ -811,7 +816,7 @@ button {
 .conv-label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
 .file-input-custom {
   width: 100%;
-  padding: 6px;
+  padding: 7px;
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
@@ -829,7 +834,7 @@ button {
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 6px;
+  padding: 7px;
   border-radius: 3px;
   font-size: 12px;
 }
@@ -876,7 +881,7 @@ button {
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 6px;
+  padding: 7px;
   font-size: 11px;
   border-radius: 3px;
   cursor: pointer;
@@ -897,7 +902,7 @@ button {
   overflow-y: auto;
 }
 #history-steps-list li {
-  padding: 6px 10px;
+  padding: 7px 10px;
   font-size: 11px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   cursor: pointer;
@@ -927,7 +932,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 100000;
   backdrop-filter: blur(2px);
 }
 .modal-dialog {
@@ -935,7 +940,7 @@ button {
   border: 1px solid var(--border-light);
   border-radius: 6px;
   width: 420px;
-  max-width: 90vw;
+  max-width: 92vw;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
   overflow: hidden;
 }
@@ -952,8 +957,9 @@ button {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
+  padding: 2px 6px;
 }
 .modal-body {
   padding: 14px;
@@ -972,7 +978,7 @@ button {
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 6px;
+  padding: 7px;
   border-radius: 3px;
   font-size: 12px;
 }
@@ -992,7 +998,7 @@ button {
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 6px;
+  padding: 7px;
   border-radius: 3px;
   font-size: 12px;
 }
@@ -1013,13 +1019,13 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 99999;
+  z-index: 999999;
 }
 .toast {
   background-color: #2b3036;
   color: #fff;
   border-left: 4px solid var(--accent-cyan);
-  padding: 8px 14px;
+  padding: 9px 15px;
   font-size: 12px;
   border-radius: 4px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.5);
@@ -1035,16 +1041,12 @@ button {
 }
 
 /* ==========================================================================
-   Mobile Responsive Styles (Smartphone Optimization)
+   Mobile Responsive Adjustments
    ========================================================================== */
 @media (max-width: 768px) {
   :root {
     --toolbar-width: 40px;
-    --dock-width: 290px;
-  }
-
-  .btn-mobile-toggle-dock {
-    display: inline-block;
+    --dock-width: 300px;
   }
 
   #right-dock {
@@ -1054,15 +1056,11 @@ button {
     height: 100%;
     z-index: 950;
     transform: translateX(100%);
-    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.7);
+    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.75);
   }
 
   #right-dock.mobile-open {
     transform: translateX(0);
-  }
-
-  .menu-bar {
-    display: none; /* Hide dense desktop menu on small phone screens */
   }
 
   #canvas-scroll-wrapper {
@@ -1079,16 +1077,12 @@ button {
   }
 
   .btn-primary, .btn-secondary, .btn-success, .btn-pwa-install {
-    padding: 4px 8px;
+    padding: 5px 8px;
     font-size: 11px;
   }
 
   .tool-btn {
-    width: 28px;
-    height: 28px;
-  }
-  .tool-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 30px;
+    height: 30px;
   }
 }

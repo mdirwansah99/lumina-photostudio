@@ -31,10 +31,10 @@
       <span class="app-title">Lumina Studio</span>
     </div>
 
-    <!-- Dropdown Menus -->
-    <nav class="menu-bar">
-      <div class="menu-item">
-        <span>File</span>
+    <!-- Dropdown Menus (Works on both click/touch and hover) -->
+    <nav class="menu-bar" id="app-menu-bar">
+      <div class="menu-item" data-menu="file">
+        <span class="menu-label">File ▾</span>
         <div class="dropdown-menu">
           <button id="btn-menu-new"><span>Dokumen Baharu (New)...</span> <kbd>Ctrl+N</kbd></button>
           <button id="btn-menu-open"><span>Buka Imej / Fail...</span> <kbd>Ctrl+O</kbd></button>
@@ -50,8 +50,8 @@
         </div>
       </div>
 
-      <div class="menu-item">
-        <span>Edit</span>
+      <div class="menu-item" data-menu="edit">
+        <span class="menu-label">Edit ▾</span>
         <div class="dropdown-menu">
           <button id="btn-menu-undo"><span>Undo</span> <kbd>Ctrl+Z</kbd></button>
           <button id="btn-menu-redo"><span>Redo</span> <kbd>Ctrl+Y</kbd></button>
@@ -61,8 +61,8 @@
         </div>
       </div>
 
-      <div class="menu-item">
-        <span>Image</span>
+      <div class="menu-item" data-menu="image">
+        <span class="menu-label">Image ▾</span>
         <div class="dropdown-menu">
           <button id="btn-menu-resize"><span>Ubah Saiz Kanvas / Imej...</span></button>
           <div class="menu-divider"></div>
@@ -72,26 +72,26 @@
           <button id="btn-menu-invert"><span>Invert Colors</span></button>
           <button id="btn-menu-sepia"><span>Sepia Vintage</span></button>
           <div class="menu-divider"></div>
-          <button id="btn-menu-flip-h"><span>Balik Mendatar (Flip Horizontal)</span></button>
-          <button id="btn-menu-flip-v"><span>Balik Menegak (Flip Vertical)</span></button>
+          <button id="btn-menu-flip-h"><span>Balik Mendatar (Flip H)</span></button>
+          <button id="btn-menu-flip-v"><span>Balik Menegak (Flip V)</span></button>
           <button id="btn-menu-rotate-cw"><span>Putar 90° Ikut Jam</span></button>
         </div>
       </div>
 
-      <div class="menu-item">
-        <span>Layer</span>
+      <div class="menu-item" data-menu="layer">
+        <span class="menu-label">Layer ▾</span>
         <div class="dropdown-menu">
           <button id="btn-menu-new-layer"><span>Lapisan Baharu (New Layer)</span> <kbd>Ctrl+Shift+N</kbd></button>
           <button id="btn-menu-dup-layer"><span>Salin Lapisan (Duplicate)</span> <kbd>Ctrl+J</kbd></button>
           <button id="btn-menu-del-layer"><span>Padam Lapisan (Delete)</span> <kbd>Del</kbd></button>
           <div class="menu-divider"></div>
-          <button id="btn-menu-merge-down"><span>Cantumkan ke Bawah (Merge Down)</span> <kbd>Ctrl+E</kbd></button>
-          <button id="btn-menu-flatten"><span>Ratakan Imej (Flatten Image)</span></button>
+          <button id="btn-menu-merge-down"><span>Cantumkan ke Bawah</span> <kbd>Ctrl+E</kbd></button>
+          <button id="btn-menu-flatten"><span>Ratakan Imej (Flatten)</span></button>
         </div>
       </div>
 
-      <div class="menu-item">
-        <span>Filter</span>
+      <div class="menu-item" data-menu="filter">
+        <span class="menu-label">Filter ▾</span>
         <div class="dropdown-menu">
           <button id="btn-filter-blur"><span>Gaussian Blur...</span></button>
           <button id="btn-filter-sharpen"><span>Sharpen...</span></button>
@@ -100,21 +100,22 @@
         </div>
       </div>
 
-      <div class="menu-item">
-        <span>PS & PDF</span>
+      <div class="menu-item" data-menu="pspdf">
+        <span class="menu-label highlight-menu">PS & PDF ▾</span>
         <div class="dropdown-menu">
-          <button id="btn-tab-pdf-nav"><span>Buka Tab PDF / PS Studio</span></button>
-          <button id="btn-tab-convert-nav"><span>Buka Tab Penukar Format</span></button>
+          <button id="btn-menu-direct-ps"><span>📄 Buka & Huraikan Fail .PS...</span></button>
+          <button id="btn-menu-direct-pdf"><span>📑 Buka Dokumen PDF...</span></button>
+          <button id="btn-menu-direct-convert"><span>🔄 Penukar Dokumen (Converter)...</span></button>
         </div>
       </div>
 
-      <div class="menu-item">
-        <span>View</span>
+      <div class="menu-item" data-menu="view">
+        <span class="menu-label">View ▾</span>
         <div class="dropdown-menu">
           <button id="btn-view-zoomin"><span>Zoom In</span> <kbd>Ctrl++</kbd></button>
           <button id="btn-view-zoomout"><span>Zoom Out</span> <kbd>Ctrl+-</kbd></button>
-          <button id="btn-view-fit"><span>Muat ke Skrin (Fit Screen)</span> <kbd>Ctrl+0</kbd></button>
-          <button id="btn-view-100"><span>Saiz Sebenar (100%)</span> <kbd>Ctrl+1</kbd></button>
+          <button id="btn-view-fit"><span>Muat ke Skrin</span> <kbd>Ctrl+0</kbd></button>
+          <button id="btn-view-100"><span>Saiz Sebenar 100%</span> <kbd>Ctrl+1</kbd></button>
         </div>
       </div>
     </nav>
@@ -123,8 +124,10 @@
     <div class="top-actions">
       <!-- Hidden file input supporting images, PDF, and PostScript .ps/.eps -->
       <input type="file" id="general-file-input" accept="image/*,application/pdf,.ps,.eps" style="display:none">
-      <button class="btn-pwa-install" id="btn-install-pwa" title="Pasang aplikasi ke telefon pintar">📱 Pasang Aplikasi</button>
-      <button class="btn-primary" id="btn-quick-open">📂 Buka Fail (.PS / PDF / Imej)</button>
+      <button class="btn-pwa-install" id="btn-install-pwa" title="Pasang aplikasi ke telefon">📱 Install</button>
+      <button class="btn-primary" id="btn-quick-open">📂 Buka Fail</button>
+      <button class="btn-secondary" id="btn-quick-ps-tab">📄 .PS</button>
+      <button class="btn-secondary" id="btn-quick-pdf-tab">📑 PDF</button>
       <button class="btn-success" id="btn-quick-export">💾 Simpan</button>
       <button class="btn-mobile-toggle-dock" id="btn-toggle-dock" title="Buka/Tutup Panel">☰</button>
     </div>
@@ -132,7 +135,7 @@
 
   <!-- Options Bar (Dynamic per active tool) -->
   <div id="options-bar">
-    <div class="tool-name-indicator" id="current-tool-badge">Brush Tool</div>
+    <div class="tool-name-indicator" id="current-tool-badge">BRUSH TOOL</div>
 
     <!-- Options for Brush / Eraser -->
     <div class="tool-options-group" id="opt-brush-group">
@@ -260,7 +263,7 @@
           <span id="stat-dims">1280 × 720 px</span>
         </div>
         <div class="status-center">
-          <span id="stat-info">Sedia. Boleh buka fail .PS, PDF atau imej!</span>
+          <span id="stat-info">Sedia. Tekan Fail, PS atau PDF untuk buka fail!</span>
         </div>
         <div class="status-right">
           <span id="stat-coords">X: 0, Y: 0</span>
@@ -273,9 +276,9 @@
       <!-- Tabs Selector -->
       <div class="dock-tabs">
         <button class="dock-tab active" data-tab="tab-layers">Lapisan</button>
-        <button class="dock-tab" data-tab="tab-ps">Fail .PS</button>
-        <button class="dock-tab" data-tab="tab-pdf">PDF Studio</button>
-        <button class="dock-tab" data-tab="tab-convert">Penukar Dokumen</button>
+        <button class="dock-tab" data-tab="tab-ps" id="dock-tab-ps">Fail .PS</button>
+        <button class="dock-tab" data-tab="tab-pdf" id="dock-tab-pdf">PDF Studio</button>
+        <button class="dock-tab" data-tab="tab-convert" id="dock-tab-convert">Penukar</button>
         <button class="dock-tab" data-tab="tab-adjust">Penapis</button>
         <button class="dock-tab" data-tab="tab-history">Sejarah</button>
       </div>
@@ -320,12 +323,12 @@
       <section class="dock-panel" id="tab-ps">
         <div class="panel-header-title">
           <h3>Enjin Pembaca Fail .PS (PostScript)</h3>
-          <p class="panel-subtext">Buka, tafsir kod vektor Adobe PostScript (.ps / .eps), dan tukar ke PDF atau imej terus di telefon anda.</p>
+          <p class="panel-subtext">Buka dan tafsir kod vektor Adobe PostScript (.ps / .eps), lalu paparkan di kanvas atau tukar ke PDF/PNG terus dari telefon.</p>
         </div>
 
         <div class="pdf-upload-box">
           <input type="file" id="ps-file-input" accept=".ps,.eps,text/plain" style="display:none">
-          <button class="btn-primary btn-block" id="btn-trigger-ps-file">📂 Pilih Fail .PS dari Telefon / PC</button>
+          <button class="btn-primary btn-block" id="btn-trigger-ps-file">📂 Pilih Fail .PS dari Telefon / Komputer</button>
           <span class="file-name-label" id="ps-loaded-filename">Tiada fail .ps dibuka</span>
         </div>
 
@@ -342,12 +345,12 @@
       <section class="dock-panel" id="tab-pdf">
         <div class="panel-header-title">
           <h3>Enjin PDF Bersepadu</h3>
-          <p class="panel-subtext">Buka, semak halaman, dan masukkan dokumen PDF ke kanvas lapisan.</p>
+          <p class="panel-subtext">Buka dokumen PDF berbilang halaman, belek halaman, dan masukkan ke kanvas Photoshop.</p>
         </div>
 
         <div class="pdf-upload-box" id="pdf-drop-zone">
           <input type="file" id="pdf-file-input" accept="application/pdf" style="display:none">
-          <button class="btn-secondary" id="btn-trigger-pdf-file">📄 Pilih Fail PDF</button>
+          <button class="btn-secondary btn-block" id="btn-trigger-pdf-file">📄 Pilih Fail Dokumen PDF</button>
           <span class="file-name-label" id="pdf-loaded-filename">Tiada fail PDF dibuka</span>
         </div>
 

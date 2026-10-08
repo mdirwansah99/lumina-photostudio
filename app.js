@@ -7,6 +7,7 @@
  * - Multi-Format Document Converter (PS, PDF, PNG, JPG, WEBP, SVG)
  * - Mobile Touch & Pinch-to-Zoom Engine
  * - PWA (Progressive Web App) Service Worker & Offline Manager
+ * - Touch-Enabled Dropdown Navigation System
  * - History & State Snapshot Manager
  */
 
@@ -157,6 +158,22 @@
     }, 3200);
   }
 
+  function switchDockTab(tabId) {
+    document.querySelectorAll('.dock-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.dock-panel').forEach(p => p.classList.remove('active'));
+    
+    const targetTab = document.querySelector(`.dock-tab[data-tab="${tabId}"]`);
+    const targetPanel = document.getElementById(tabId);
+    
+    if (targetTab) targetTab.classList.add('active');
+    if (targetPanel) targetPanel.classList.add('active');
+
+    // On mobile, ensure the dock is visible when user switches tabs
+    if (window.innerWidth <= 768 && dom.rightDock) {
+      dom.rightDock.classList.add('mobile-open');
+    }
+  }
+
   /* --------------------------------------------------------------------------
      Layer Structure
      -------------------------------------------------------------------------- */
@@ -296,7 +313,7 @@
       const visBtn = document.createElement('button');
       visBtn.className = `layer-visibility-btn ${layer.visible ? 'visible' : ''}`;
       visBtn.innerHTML = layer.visible ? '👁' : '⎯';
-      visBtn.title = layer.visible ? 'Sembunyikan Lapisan' : 'Pamerkan Lapisan';
+      visBtn.title = layer.visible ? 'Sembunyikan' : 'Pamerkan';
       visBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         layer.visible = !layer.visible;
@@ -662,7 +679,7 @@
       handleEnd(e.clientX, e.clientY);
     });
 
-    // Touch Listeners for Mobile Phones
+    // Touch Listeners for Mobile
     let touchDistStart = 0;
     let initialZoom = 1.0;
 
@@ -671,7 +688,6 @@
         const t = e.touches[0];
         handleStart(t.clientX, t.clientY, false);
       } else if (e.touches.length === 2) {
-        // Two-finger pinch to zoom
         state.isDrawing = false;
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -1163,7 +1179,7 @@
      -------------------------------------------------------------------------- */
   async function loadPostScriptFile(file) {
     try {
-      showToast('Sedang menghurai kod fail .PS (PostScript)...', 'info');
+      showToast('Sedang menghurai fail .PS (PostScript)...', 'info');
       dom.psLoadedFilename.textContent = file.name;
 
       const reader = new FileReader();
@@ -1187,8 +1203,7 @@
         dom.psActionControls.style.display = 'block';
         dom.psDetailsBadge.textContent = `Vektor: ${result.width} × ${result.height} px (BBox: ${result.bbox.x}, ${result.bbox.y})`;
         
-        // Switch tab to PS tab
-        document.querySelector('.dock-tab[data-tab="tab-ps"]').click();
+        switchDockTab('tab-ps');
         showToast(`Fail .PS "${file.name}" berjaya dihuraikan!`, 'success');
       };
       reader.readAsText(file);
@@ -1239,6 +1254,7 @@
 
       dom.pdfNavWrapper.style.display = 'block';
       updatePDFPageDisplay();
+      switchDockTab('tab-pdf');
       showToast(`PDF berjaya dimuat (${state.pdfTotalPages} halaman)`, 'success');
     } catch (err) {
       console.error(err);
@@ -1364,7 +1380,6 @@
       const quality = parseFloat(dom.convQuality.value) / 100;
 
       if (isInputPS) {
-        // PostScript to Image or PDF
         const text = await file.text();
         const parsed = window.PostScriptParser.parse(text);
         if (targetFormat === 'pdf') {
@@ -1500,7 +1515,6 @@
     }
     if (file.type === 'application/pdf' || name.endsWith('.pdf')) {
       loadPDFFile(file);
-      document.querySelector('.dock-tab[data-tab="tab-pdf"]').click();
       return;
     }
 
@@ -1530,6 +1544,21 @@
      Event Listeners & UI Wire-up
      -------------------------------------------------------------------------- */
   function setupEventListeners() {
+    // Dropdown Navigation Click / Touch Support
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = item.classList.contains('open');
+        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('open'));
+        if (!isOpen) item.classList.add('open');
+      });
+    });
+
+    // Close open dropdowns when clicking anywhere outside
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('open'));
+    });
+
     // Toolbar Tool Selection
     document.querySelectorAll('.tool-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1632,18 +1661,45 @@
     // Dock Tabs Switcher
     document.querySelectorAll('.dock-tab').forEach(tab => {
       tab.addEventListener('click', () => {
-        document.querySelectorAll('.dock-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.dock-panel').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.tab).classList.add('active');
+        switchDockTab(tab.dataset.tab);
       });
     });
 
-    // Mobile Dock Toggle
+    // Mobile Dock Toggle Button
     if (dom.btnToggleDock) {
       dom.btnToggleDock.addEventListener('click', () => {
         dom.rightDock.classList.toggle('mobile-open');
       });
+    }
+
+    // Top Bar Quick Tab Buttons
+    const btnQuickPs = document.getElementById('btn-quick-ps-tab');
+    if (btnQuickPs) {
+      btnQuickPs.addEventListener('click', () => switchDockTab('tab-ps'));
+    }
+    const btnQuickPdf = document.getElementById('btn-quick-pdf-tab');
+    if (btnQuickPdf) {
+      btnQuickPdf.addEventListener('click', () => switchDockTab('tab-pdf'));
+    }
+
+    // PS & PDF Dropdown Direct Buttons
+    const btnDirectPs = document.getElementById('btn-menu-direct-ps');
+    if (btnDirectPs) {
+      btnDirectPs.addEventListener('click', () => {
+        switchDockTab('tab-ps');
+        dom.psFileInput.click();
+      });
+    }
+    const btnDirectPdf = document.getElementById('btn-menu-direct-pdf');
+    if (btnDirectPdf) {
+      btnDirectPdf.addEventListener('click', () => {
+        switchDockTab('tab-pdf');
+        dom.pdfFileInput.click();
+      });
+    }
+    const btnDirectConv = document.getElementById('btn-menu-direct-convert');
+    if (btnDirectConv) {
+      btnDirectConv.addEventListener('click', () => switchDockTab('tab-convert'));
     }
 
     // PWA Install Button & Prompt
@@ -1662,7 +1718,6 @@
         }
         state.deferredPrompt = null;
       } else {
-        // Show guidance modal for iOS or manual install
         dom.modalPwaGuide.style.display = 'flex';
       }
     });
@@ -1760,7 +1815,10 @@
     // Top Menu Bar Commands
     document.getElementById('btn-quick-open').addEventListener('click', () => dom.generalFileInput.click());
     document.getElementById('btn-menu-open').addEventListener('click', () => dom.generalFileInput.click());
-    document.getElementById('btn-menu-open-ps').addEventListener('click', () => dom.psFileInput.click());
+    document.getElementById('btn-menu-open-ps').addEventListener('click', () => {
+      switchDockTab('tab-ps');
+      dom.psFileInput.click();
+    });
     dom.generalFileInput.addEventListener('change', (e) => {
       if (e.target.files[0]) openGeneralFile(e.target.files[0]);
     });
@@ -1770,9 +1828,12 @@
     document.getElementById('btn-menu-save-jpg').addEventListener('click', () => downloadCanvasAs(dom.mainCanvas, 'jpeg', 0.92, 'lumina_export'));
     document.getElementById('btn-menu-save-webp').addEventListener('click', () => downloadCanvasAs(dom.mainCanvas, 'webp', 0.92, 'lumina_export'));
     document.getElementById('btn-menu-save-pdf').addEventListener('click', () => convertCanvasToPDF(dom.mainCanvas, 'lumina_document'));
-    document.getElementById('btn-menu-open-pdf').addEventListener('click', () => dom.pdfFileInput.click());
+    document.getElementById('btn-menu-open-pdf').addEventListener('click', () => {
+      switchDockTab('tab-pdf');
+      dom.pdfFileInput.click();
+    });
     document.getElementById('btn-menu-converter').addEventListener('click', () => {
-      document.querySelector('.dock-tab[data-tab="tab-convert"]').click();
+      switchDockTab('tab-convert');
     });
 
     document.getElementById('btn-menu-undo').addEventListener('click', undo);
@@ -1816,8 +1877,8 @@
     document.getElementById('btn-view-zoomin').addEventListener('click', () => updateZoom(state.zoom * 1.25));
     document.getElementById('btn-view-zoomout').addEventListener('click', () => updateZoom(state.zoom * 0.8));
     document.getElementById('btn-view-fit').addEventListener('click', () => {
-      const rw = (dom.scrollWrapper.clientWidth - 80) / state.width;
-      const rh = (dom.scrollWrapper.clientHeight - 80) / state.height;
+      const rw = (dom.scrollWrapper.clientWidth - 40) / state.width;
+      const rh = (dom.scrollWrapper.clientHeight - 40) / state.height;
       updateZoom(Math.min(rw, rh));
     });
     document.getElementById('btn-view-100').addEventListener('click', () => updateZoom(1.0));
