@@ -1477,7 +1477,7 @@
       let mime = 'image/png';
       let ext = 'png';
 
-      if (format === 'jpeg') { mime = 'image/jpeg'; ext = 'jpg'; }
+      if (format === 'jpeg' || format === 'jpg') { mime = 'image/jpeg'; ext = 'jpg'; }
       else if (format === 'webp') { mime = 'image/webp'; ext = 'webp'; }
       else if (format === 'svg') {
         const svgData = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}"><image href="${canvas.toDataURL('image/png')}" width="${canvas.width}" height="${canvas.height}"/></svg>`;
@@ -1487,21 +1487,59 @@
         return;
       }
 
-      canvas.toBlob((blob) => {
-        downloadBlob(blob, `${baseName}.${ext}`);
+      try {
+        if (canvas.toBlob) {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              downloadBlob(blob, `${baseName}.${ext}`);
+            } else {
+              const dataUrl = canvas.toDataURL(mime, quality);
+              const a = document.createElement('a');
+              a.href = dataUrl;
+              a.download = `${baseName}.${ext}`;
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => { if (a.parentNode) document.body.removeChild(a); }, 2000);
+              showToast(`Fail disimpan: ${baseName}.${ext}`, 'success');
+            }
+            resolve();
+          }, mime, quality);
+        } else {
+          const dataUrl = canvas.toDataURL(mime, quality);
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = `${baseName}.${ext}`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => { if (a.parentNode) document.body.removeChild(a); }, 2000);
+          showToast(`Fail disimpan: ${baseName}.${ext}`, 'success');
+          resolve();
+        }
+      } catch (err) {
+        console.error('Download canvas error:', err);
+        showToast('Gagal memuat turun fail imej', 'error');
         resolve();
-      }, mime, quality);
+      }
     });
   }
 
   function downloadBlob(blob, filename) {
+    if (!blob) {
+      showToast('Gagal menghasilkan fail untuk dimuat turun', 'error');
+      return;
+    }
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = filename;
+    a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
+    showToast(`Memuat turun: ${filename}`, 'success');
+    setTimeout(() => {
+      if (a.parentNode) document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 45000);
   }
 
   /* --------------------------------------------------------------------------
@@ -1540,17 +1578,45 @@
     reader.readAsDataURL(file);
   }
 
+  function fitCanvasToScreen() {
+    if (!dom.scrollWrapper || !state.width || !state.height) return;
+    const pad = 24;
+    const availW = Math.max(100, dom.scrollWrapper.clientWidth - pad);
+    const availH = Math.max(100, dom.scrollWrapper.clientHeight - pad);
+    const rw = availW / state.width;
+    const rh = availH / state.height;
+    const fitZ = Math.min(rw, rh);
+    if (fitZ > 0) updateZoom(fitZ);
+  }
+
   /* --------------------------------------------------------------------------
      Event Listeners & UI Wire-up
      -------------------------------------------------------------------------- */
   function setupEventListeners() {
+    function on(target, evt, handler) {
+      const el = typeof target === 'string' ? document.getElementById(target) : target;
+      if (el) {
+        el.addEventListener(evt, handler);
+        return el;
+      }
+      return null;
+    }
+
     // Dropdown Navigation Click / Touch Support
     document.querySelectorAll('.menu-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isOpen = item.classList.contains('open');
-        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('open'));
-        if (!isOpen) item.classList.add('open');
+      const label = item.querySelector('.menu-label');
+      if (label) {
+        label.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = item.classList.contains('open');
+          document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('open'));
+          if (!isOpen) item.classList.add('open');
+        });
+      }
+      item.querySelectorAll('.dropdown-menu button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          item.classList.remove('open');
+        });
       });
     });
 
@@ -1559,81 +1625,128 @@
       document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('open'));
     });
 
-    // Toolbar Tool Selection
+    function setActiveTool(tool) {
+      if (!tool) return;
+      state.activeTool = tool;
+      document.querySelectorAll('.tool-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tool === tool);
+      });
+      document.querySelectorAll('#mobile-bottom-bar .mob-btn[data-tool]').forEach(b => {
+        b.classList.toggle('active', b.dataset.tool === tool);
+      });
+      if (dom.workspace) dom.workspace.style.cursor = getToolCursor(tool);
+      updateOptionsBar(tool);
+    }
+
+    // Toolbar Tool Selection (Desktop)
     document.querySelectorAll('.tool-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.activeTool = btn.dataset.tool;
-        dom.workspace.style.cursor = getToolCursor(state.activeTool);
-        updateOptionsBar(state.activeTool);
+        setActiveTool(btn.dataset.tool);
+      });
+    });
+
+    // Mobile Bottom Bar Tool Selection
+    document.querySelectorAll('#mobile-bottom-bar .mob-btn[data-tool]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setActiveTool(btn.dataset.tool);
       });
     });
 
     function updateOptionsBar(tool) {
-      dom.currentToolBadge.textContent = tool.toUpperCase() + ' TOOL';
-      document.getElementById('opt-brush-group').style.display = (tool === 'brush' || tool === 'pencil' || tool === 'eraser') ? 'flex' : 'none';
-      document.getElementById('opt-shape-group').style.display = (tool === 'shape') ? 'flex' : 'none';
-      document.getElementById('opt-text-group').style.display = (tool === 'text') ? 'flex' : 'none';
-      document.getElementById('opt-select-group').style.display = (tool === 'select') ? 'flex' : 'none';
+      if (dom.currentToolBadge) dom.currentToolBadge.textContent = tool.toUpperCase() + ' TOOL';
+      const bGrp = document.getElementById('opt-brush-group');
+      if (bGrp) bGrp.style.display = (tool === 'brush' || tool === 'pencil' || tool === 'eraser') ? 'flex' : 'none';
+      const sGrp = document.getElementById('opt-shape-group');
+      if (sGrp) sGrp.style.display = (tool === 'shape') ? 'flex' : 'none';
+      const tGrp = document.getElementById('opt-text-group');
+      if (tGrp) tGrp.style.display = (tool === 'text') ? 'flex' : 'none';
+      const selGrp = document.getElementById('opt-select-group');
+      if (selGrp) selGrp.style.display = (tool === 'select') ? 'flex' : 'none';
     }
 
+    // Mobile Bottom Bar Direct Buttons
+    on('mob-btn-open-ps', 'click', () => {
+      switchDockTab('tab-ps');
+      if (dom.rightDock) dom.rightDock.classList.add('mobile-open');
+      if (dom.psFileInput) dom.psFileInput.click();
+    });
+    on('mob-btn-open-pdf', 'click', () => {
+      switchDockTab('tab-pdf');
+      if (dom.rightDock) dom.rightDock.classList.add('mobile-open');
+      if (dom.pdfFileInput) dom.pdfFileInput.click();
+    });
+    on('mob-btn-layers', 'click', () => {
+      switchDockTab('tab-layers');
+      if (dom.rightDock) dom.rightDock.classList.toggle('mobile-open');
+    });
+    on('btn-close-dock', 'click', () => {
+      if (dom.rightDock) dom.rightDock.classList.remove('mobile-open');
+    });
+    on('btn-quick-fit', 'click', () => fitCanvasToScreen());
+    on('btn-trigger-conv-file', 'click', () => {
+      if (dom.convFileInput) dom.convFileInput.click();
+    });
+
     // Brush sliders
-    dom.brushSize.addEventListener('input', (e) => {
+    on(dom.brushSize, 'input', (e) => {
       state.brushSize = parseInt(e.target.value);
-      dom.brushSizeVal.textContent = state.brushSize + 'px';
+      if (dom.brushSizeVal) dom.brushSizeVal.textContent = state.brushSize + 'px';
     });
-    dom.brushHardness.addEventListener('input', (e) => {
+    on(dom.brushHardness, 'input', (e) => {
       state.brushHardness = parseInt(e.target.value);
-      dom.brushHardnessVal.textContent = state.brushHardness + '%';
+      if (dom.brushHardnessVal) dom.brushHardnessVal.textContent = state.brushHardness + '%';
     });
-    dom.brushOpacity.addEventListener('input', (e) => {
+    on(dom.brushOpacity, 'input', (e) => {
       state.brushOpacity = parseInt(e.target.value) / 100;
-      dom.brushOpacityVal.textContent = e.target.value + '%';
+      if (dom.brushOpacityVal) dom.brushOpacityVal.textContent = e.target.value + '%';
     });
 
     // Shape options
-    dom.shapeType.addEventListener('change', (e) => state.shapeType = e.target.value);
-    dom.shapeStrokeWidth.addEventListener('input', (e) => state.shapeStrokeWidth = parseInt(e.target.value) || 0);
-    dom.shapeFillCheck.addEventListener('change', (e) => state.shapeFill = e.target.checked);
+    on(dom.shapeType, 'change', (e) => state.shapeType = e.target.value);
+    on(dom.shapeStrokeWidth, 'input', (e) => state.shapeStrokeWidth = parseInt(e.target.value) || 0);
+    on(dom.shapeFillCheck, 'change', (e) => state.shapeFill = e.target.checked);
 
     // Text options
-    dom.textFont.addEventListener('change', (e) => state.textFont = e.target.value);
-    dom.textSize.addEventListener('input', (e) => state.textSize = parseInt(e.target.value) || 24);
-    document.getElementById('btn-text-bold').addEventListener('click', (e) => {
+    on(dom.textFont, 'change', (e) => state.textFont = e.target.value);
+    on(dom.textSize, 'input', (e) => state.textSize = parseInt(e.target.value) || 24);
+    on('btn-text-bold', 'click', (e) => {
       state.textBold = !state.textBold;
       e.currentTarget.classList.toggle('active', state.textBold);
     });
-    document.getElementById('btn-text-italic').addEventListener('click', (e) => {
+    on('btn-text-italic', 'click', (e) => {
       state.textItalic = !state.textItalic;
       e.currentTarget.classList.toggle('active', state.textItalic);
     });
 
     // Selection crop & clear
-    document.getElementById('btn-crop-selection').addEventListener('click', cropToSelection);
-    document.getElementById('btn-clear-selection').addEventListener('click', clearSelection);
+    on('btn-crop-selection', 'click', cropToSelection);
+    on('btn-clear-selection', 'click', clearSelection);
 
     // Colors
-    dom.fgColor.addEventListener('input', (e) => {
+    on(dom.fgColor, 'input', (e) => {
       state.fgColor = e.target.value;
-      document.getElementById('fg-color-box').style.backgroundColor = state.fgColor;
+      const fgBox = document.getElementById('fg-color-box');
+      if (fgBox) fgBox.style.backgroundColor = state.fgColor;
     });
-    dom.bgColor.addEventListener('input', (e) => {
+    on(dom.bgColor, 'input', (e) => {
       state.bgColor = e.target.value;
-      document.getElementById('bg-color-box').style.backgroundColor = state.bgColor;
+      const bgBox = document.getElementById('bg-color-box');
+      if (bgBox) bgBox.style.backgroundColor = state.bgColor;
     });
-    document.getElementById('btn-swap-colors').addEventListener('click', () => {
+    on('btn-swap-colors', 'click', () => {
       const temp = state.fgColor;
       state.fgColor = state.bgColor;
       state.bgColor = temp;
-      dom.fgColor.value = state.fgColor;
-      dom.bgColor.value = state.bgColor;
-      document.getElementById('fg-color-box').style.backgroundColor = state.fgColor;
-      document.getElementById('bg-color-box').style.backgroundColor = state.bgColor;
+      if (dom.fgColor) dom.fgColor.value = state.fgColor;
+      if (dom.bgColor) dom.bgColor.value = state.bgColor;
+      const fgBox = document.getElementById('fg-color-box');
+      const bgBox = document.getElementById('bg-color-box');
+      if (fgBox) fgBox.style.backgroundColor = state.fgColor;
+      if (bgBox) bgBox.style.backgroundColor = state.bgColor;
     });
 
     // Layer blend mode & opacity
-    dom.layerBlendMode.addEventListener('change', (e) => {
+    on(dom.layerBlendMode, 'change', (e) => {
       const cur = getActiveLayer();
       if (cur) {
         cur.blendMode = e.target.value;
@@ -1641,22 +1754,22 @@
         saveHistory('Ubah Mod Campuran');
       }
     });
-    dom.layerOpacity.addEventListener('input', (e) => {
+    on(dom.layerOpacity, 'input', (e) => {
       const cur = getActiveLayer();
       if (cur) {
         cur.opacity = parseInt(e.target.value) / 100;
-        dom.layerOpacityVal.textContent = e.target.value + '%';
+        if (dom.layerOpacityVal) dom.layerOpacityVal.textContent = e.target.value + '%';
         renderAll();
       }
     });
 
     // Layer Footer Buttons
-    document.getElementById('btn-add-layer').addEventListener('click', () => createNewLayer());
-    document.getElementById('btn-duplicate-layer').addEventListener('click', duplicateActiveLayer);
-    document.getElementById('btn-delete-layer').addEventListener('click', deleteActiveLayer);
-    document.getElementById('btn-move-layer-up').addEventListener('click', moveLayerUp);
-    document.getElementById('btn-move-layer-down').addEventListener('click', moveLayerDown);
-    document.getElementById('btn-merge-layer').addEventListener('click', mergeLayerDown);
+    on('btn-add-layer', 'click', () => createNewLayer());
+    on('btn-duplicate-layer', 'click', duplicateActiveLayer);
+    on('btn-delete-layer', 'click', deleteActiveLayer);
+    on('btn-move-layer-up', 'click', moveLayerUp);
+    on('btn-move-layer-down', 'click', moveLayerDown);
+    on('btn-merge-layer', 'click', mergeLayerDown);
 
     // Dock Tabs Switcher
     document.querySelectorAll('.dock-tab').forEach(tab => {
@@ -1668,76 +1781,63 @@
     // Mobile Dock Toggle Button
     if (dom.btnToggleDock) {
       dom.btnToggleDock.addEventListener('click', () => {
-        dom.rightDock.classList.toggle('mobile-open');
+        if (dom.rightDock) dom.rightDock.classList.toggle('mobile-open');
       });
     }
 
     // Top Bar Quick Tab Buttons
-    const btnQuickPs = document.getElementById('btn-quick-ps-tab');
-    if (btnQuickPs) {
-      btnQuickPs.addEventListener('click', () => switchDockTab('tab-ps'));
-    }
-    const btnQuickPdf = document.getElementById('btn-quick-pdf-tab');
-    if (btnQuickPdf) {
-      btnQuickPdf.addEventListener('click', () => switchDockTab('tab-pdf'));
-    }
-
-    // PS & PDF Dropdown Direct Buttons
-    const btnDirectPs = document.getElementById('btn-menu-direct-ps');
-    if (btnDirectPs) {
-      btnDirectPs.addEventListener('click', () => {
-        switchDockTab('tab-ps');
-        dom.psFileInput.click();
-      });
-    }
-    const btnDirectPdf = document.getElementById('btn-menu-direct-pdf');
-    if (btnDirectPdf) {
-      btnDirectPdf.addEventListener('click', () => {
-        switchDockTab('tab-pdf');
-        dom.pdfFileInput.click();
-      });
-    }
-    const btnDirectConv = document.getElementById('btn-menu-direct-convert');
-    if (btnDirectConv) {
-      btnDirectConv.addEventListener('click', () => switchDockTab('tab-convert'));
-    }
+    on('btn-quick-ps-tab', 'click', () => switchDockTab('tab-ps'));
+    on('btn-quick-pdf-tab', 'click', () => switchDockTab('tab-pdf'));
+    on('btn-menu-direct-ps', 'click', () => {
+      switchDockTab('tab-ps');
+      if (dom.psFileInput) dom.psFileInput.click();
+    });
+    on('btn-menu-direct-pdf', 'click', () => {
+      switchDockTab('tab-pdf');
+      if (dom.pdfFileInput) dom.pdfFileInput.click();
+    });
+    on('btn-menu-direct-convert', 'click', () => switchDockTab('tab-convert'));
 
     // PWA Install Button & Prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       state.deferredPrompt = e;
-      dom.btnInstallPwa.style.display = 'inline-flex';
+      if (dom.btnInstallPwa) dom.btnInstallPwa.style.display = 'inline-flex';
     });
 
-    dom.btnInstallPwa.addEventListener('click', async () => {
-      if (state.deferredPrompt) {
-        state.deferredPrompt.prompt();
-        const { outcome } = await state.deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          showToast('Terima kasih! Aplikasi berjaya dipasang.', 'success');
+    if (dom.btnInstallPwa) {
+      dom.btnInstallPwa.addEventListener('click', async () => {
+        if (state.deferredPrompt) {
+          state.deferredPrompt.prompt();
+          const { outcome } = await state.deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            showToast('Terima kasih! Aplikasi berjaya dipasang.', 'success');
+          }
+          state.deferredPrompt = null;
+        } else {
+          if (dom.modalPwaGuide) dom.modalPwaGuide.style.display = 'flex';
         }
-        state.deferredPrompt = null;
-      } else {
-        dom.modalPwaGuide.style.display = 'flex';
-      }
-    });
-    document.getElementById('btn-close-pwa-guide').addEventListener('click', () => dom.modalPwaGuide.style.display = 'none');
-    document.getElementById('btn-got-it-pwa').addEventListener('click', () => dom.modalPwaGuide.style.display = 'none');
+      });
+    }
+    on('btn-close-pwa-guide', 'click', () => { if (dom.modalPwaGuide) dom.modalPwaGuide.style.display = 'none'; });
+    on('btn-got-it-pwa', 'click', () => { if (dom.modalPwaGuide) dom.modalPwaGuide.style.display = 'none'; });
 
     // PostScript .PS Studio Controls
-    document.getElementById('btn-trigger-ps-file').addEventListener('click', () => dom.psFileInput.click());
-    dom.psFileInput.addEventListener('change', (e) => {
-      if (e.target.files[0]) loadPostScriptFile(e.target.files[0]);
-    });
-    document.getElementById('btn-ps-insert-layer').addEventListener('click', () => insertPostScriptToCanvas(false));
-    document.getElementById('btn-ps-set-canvas').addEventListener('click', () => insertPostScriptToCanvas(true));
-    document.getElementById('btn-ps-convert-to-pdf').addEventListener('click', async () => {
+    on('btn-trigger-ps-file', 'click', () => { if (dom.psFileInput) dom.psFileInput.click(); });
+    if (dom.psFileInput) {
+      dom.psFileInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) loadPostScriptFile(e.target.files[0]);
+      });
+    }
+    on('btn-ps-insert-layer', 'click', () => insertPostScriptToCanvas(false));
+    on('btn-ps-set-canvas', 'click', () => insertPostScriptToCanvas(true));
+    on('btn-ps-convert-to-pdf', 'click', async () => {
       if (state.psRenderResult) {
         await convertCanvasToPDF(state.psRenderResult.canvas, state.psRenderResult.name.replace(/\.[^/.]+$/, ''));
         showToast('Fail .PS dieksport sebagai PDF!', 'success');
       }
     });
-    document.getElementById('btn-ps-convert-to-png').addEventListener('click', async () => {
+    on('btn-ps-convert-to-png', 'click', async () => {
       if (state.psRenderResult) {
         await downloadCanvasAs(state.psRenderResult.canvas, 'png', 1.0, state.psRenderResult.name.replace(/\.[^/.]+$/, ''));
         showToast('Fail .PS dieksport sebagai PNG!', 'success');
@@ -1745,25 +1845,27 @@
     });
 
     // PDF Studio Controls
-    document.getElementById('btn-trigger-pdf-file').addEventListener('click', () => dom.pdfFileInput.click());
-    dom.pdfFileInput.addEventListener('change', (e) => {
-      if (e.target.files[0]) loadPDFFile(e.target.files[0]);
-    });
-    document.getElementById('btn-pdf-prev').addEventListener('click', () => {
+    on('btn-trigger-pdf-file', 'click', () => { if (dom.pdfFileInput) dom.pdfFileInput.click(); });
+    if (dom.pdfFileInput) {
+      dom.pdfFileInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) loadPDFFile(e.target.files[0]);
+      });
+    }
+    on('btn-pdf-prev', 'click', () => {
       if (state.pdfCurrentPage > 1) {
         state.pdfCurrentPage--;
         updatePDFPageDisplay();
       }
     });
-    document.getElementById('btn-pdf-next').addEventListener('click', () => {
+    on('btn-pdf-next', 'click', () => {
       if (state.pdfCurrentPage < state.pdfTotalPages) {
         state.pdfCurrentPage++;
         updatePDFPageDisplay();
       }
     });
-    document.getElementById('btn-pdf-insert-layer').addEventListener('click', () => insertPDFPageAsLayer(false));
-    document.getElementById('btn-pdf-set-as-canvas').addEventListener('click', () => insertPDFPageAsLayer(true));
-    document.getElementById('btn-pdf-export-all-png').addEventListener('click', async () => {
+    on('btn-pdf-insert-layer', 'click', () => insertPDFPageAsLayer(false));
+    on('btn-pdf-set-as-canvas', 'click', () => insertPDFPageAsLayer(true));
+    on('btn-pdf-export-all-png', 'click', async () => {
       if (!state.pdfDoc) return;
       showToast('Mengekstrak semua halaman ke PNG...', 'info');
       for (let i = 1; i <= state.pdfDoc.numPages; i++) {
@@ -1779,22 +1881,30 @@
     });
 
     // Adjustments & Quick Filters
-    document.getElementById('btn-apply-adjustments').addEventListener('click', () => {
-      const b = parseInt(document.getElementById('adj-brightness').value);
-      const c = parseInt(document.getElementById('adj-contrast').value);
-      const s = parseInt(document.getElementById('adj-saturation').value);
-      const blur = parseInt(document.getElementById('adj-blur').value);
+    on('btn-apply-adjustments', 'click', () => {
+      const b = parseInt(document.getElementById('adj-brightness')?.value || 0);
+      const c = parseInt(document.getElementById('adj-contrast')?.value || 0);
+      const s = parseInt(document.getElementById('adj-saturation')?.value || 100);
+      const blur = parseInt(document.getElementById('adj-blur')?.value || 0);
       applyColorAdjustments(b, c, s, blur);
     });
-    document.getElementById('btn-reset-adjustments').addEventListener('click', () => {
-      document.getElementById('adj-brightness').value = 0;
-      document.getElementById('adj-contrast').value = 0;
-      document.getElementById('adj-saturation').value = 100;
-      document.getElementById('adj-blur').value = 0;
-      document.getElementById('adj-bright-val').textContent = '0';
-      document.getElementById('adj-contrast-val').textContent = '0';
-      document.getElementById('adj-saturate-val').textContent = '100%';
-      document.getElementById('adj-blur-val').textContent = '0px';
+    on('btn-reset-adjustments', 'click', () => {
+      const b = document.getElementById('adj-brightness');
+      const c = document.getElementById('adj-contrast');
+      const s = document.getElementById('adj-saturation');
+      const blur = document.getElementById('adj-blur');
+      if (b) b.value = 0;
+      if (c) c.value = 0;
+      if (s) s.value = 100;
+      if (blur) blur.value = 0;
+      const bVal = document.getElementById('adj-bright-val');
+      const cVal = document.getElementById('adj-contrast-val');
+      const sVal = document.getElementById('adj-saturate-val');
+      const blurVal = document.getElementById('adj-blur-val');
+      if (bVal) bVal.textContent = '0';
+      if (cVal) cVal.textContent = '0';
+      if (sVal) sVal.textContent = '100%';
+      if (blurVal) blurVal.textContent = '0px';
     });
     ['brightness', 'contrast', 'saturation', 'blur'].forEach(id => {
       const el = document.getElementById(`adj-${id}`);
@@ -1807,38 +1917,42 @@
       }
     });
 
-    document.getElementById('btn-quick-grayscale').addEventListener('click', () => applyQuickFilter('grayscale'));
-    document.getElementById('btn-quick-sepia').addEventListener('click', () => applyQuickFilter('sepia'));
-    document.getElementById('btn-quick-invert').addEventListener('click', () => applyQuickFilter('invert'));
-    document.getElementById('btn-quick-sharpen').addEventListener('click', () => applyQuickFilter('sharpen'));
+    on('btn-quick-grayscale', 'click', () => applyQuickFilter('grayscale'));
+    on('btn-quick-sepia', 'click', () => applyQuickFilter('sepia'));
+    on('btn-quick-invert', 'click', () => applyQuickFilter('invert'));
+    on('btn-quick-sharpen', 'click', () => applyQuickFilter('sharpen'));
 
-    // Top Menu Bar Commands
-    document.getElementById('btn-quick-open').addEventListener('click', () => dom.generalFileInput.click());
-    document.getElementById('btn-menu-open').addEventListener('click', () => dom.generalFileInput.click());
-    document.getElementById('btn-menu-open-ps').addEventListener('click', () => {
+    // Top Menu Bar Commands & Direct Quick Actions
+    on('btn-quick-open', 'click', () => {
+      if (dom.generalFileInput) dom.generalFileInput.click();
+    });
+    on('btn-menu-open', 'click', () => {
+      if (dom.generalFileInput) dom.generalFileInput.click();
+    });
+    on('btn-menu-open-ps', 'click', () => {
       switchDockTab('tab-ps');
-      dom.psFileInput.click();
+      if (dom.psFileInput) dom.psFileInput.click();
     });
-    dom.generalFileInput.addEventListener('change', (e) => {
-      if (e.target.files[0]) openGeneralFile(e.target.files[0]);
-    });
+    if (dom.generalFileInput) {
+      dom.generalFileInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) openGeneralFile(e.target.files[0]);
+      });
+    }
 
-    document.getElementById('btn-quick-export').addEventListener('click', () => downloadCanvasAs(dom.mainCanvas, 'png', 1.0, 'lumina_export'));
-    document.getElementById('btn-menu-save-png').addEventListener('click', () => downloadCanvasAs(dom.mainCanvas, 'png', 1.0, 'lumina_export'));
-    document.getElementById('btn-menu-save-jpg').addEventListener('click', () => downloadCanvasAs(dom.mainCanvas, 'jpeg', 0.92, 'lumina_export'));
-    document.getElementById('btn-menu-save-webp').addEventListener('click', () => downloadCanvasAs(dom.mainCanvas, 'webp', 0.92, 'lumina_export'));
-    document.getElementById('btn-menu-save-pdf').addEventListener('click', () => convertCanvasToPDF(dom.mainCanvas, 'lumina_document'));
-    document.getElementById('btn-menu-open-pdf').addEventListener('click', () => {
+    on('btn-quick-export', 'click', () => downloadCanvasAs(dom.mainCanvas, 'png', 1.0, 'lumina_export'));
+    on('btn-menu-save-png', 'click', () => downloadCanvasAs(dom.mainCanvas, 'png', 1.0, 'lumina_export'));
+    on('btn-menu-save-jpg', 'click', () => downloadCanvasAs(dom.mainCanvas, 'jpeg', 0.92, 'lumina_export'));
+    on('btn-menu-save-webp', 'click', () => downloadCanvasAs(dom.mainCanvas, 'webp', 0.92, 'lumina_export'));
+    on('btn-menu-save-pdf', 'click', () => convertCanvasToPDF(dom.mainCanvas, 'lumina_document'));
+    on('btn-menu-open-pdf', 'click', () => {
       switchDockTab('tab-pdf');
-      dom.pdfFileInput.click();
+      if (dom.pdfFileInput) dom.pdfFileInput.click();
     });
-    document.getElementById('btn-menu-converter').addEventListener('click', () => {
-      switchDockTab('tab-convert');
-    });
+    on('btn-menu-converter', 'click', () => switchDockTab('tab-convert'));
 
-    document.getElementById('btn-menu-undo').addEventListener('click', undo);
-    document.getElementById('btn-menu-redo').addEventListener('click', redo);
-    document.getElementById('btn-menu-clear').addEventListener('click', () => {
+    on('btn-menu-undo', 'click', undo);
+    on('btn-menu-redo', 'click', redo);
+    on('btn-menu-clear', 'click', () => {
       const cur = getActiveLayer();
       if (cur) {
         cur.ctx.clearRect(0, 0, cur.canvas.width, cur.canvas.height);
@@ -1846,7 +1960,7 @@
         saveHistory('Kosongkan Lapisan');
       }
     });
-    document.getElementById('btn-menu-fill').addEventListener('click', () => {
+    on('btn-menu-fill', 'click', () => {
       const cur = getActiveLayer();
       if (cur) {
         cur.ctx.fillStyle = state.fgColor;
@@ -1856,70 +1970,72 @@
       }
     });
 
-    document.getElementById('btn-menu-new-layer').addEventListener('click', () => createNewLayer());
-    document.getElementById('btn-menu-dup-layer').addEventListener('click', duplicateActiveLayer);
-    document.getElementById('btn-menu-del-layer').addEventListener('click', deleteActiveLayer);
-    document.getElementById('btn-menu-merge-down').addEventListener('click', mergeLayerDown);
-    document.getElementById('btn-menu-flatten').addEventListener('click', flattenImage);
+    on('btn-menu-new-layer', 'click', () => createNewLayer());
+    on('btn-menu-dup-layer', 'click', duplicateActiveLayer);
+    on('btn-menu-del-layer', 'click', deleteActiveLayer);
+    on('btn-menu-merge-down', 'click', mergeLayerDown);
+    on('btn-menu-flatten', 'click', flattenImage);
 
-    document.getElementById('btn-menu-grayscale').addEventListener('click', () => applyQuickFilter('grayscale'));
-    document.getElementById('btn-menu-invert').addEventListener('click', () => applyQuickFilter('invert'));
-    document.getElementById('btn-menu-sepia').addEventListener('click', () => applyQuickFilter('sepia'));
-    document.getElementById('btn-menu-flip-h').addEventListener('click', () => flipLayer(true));
-    document.getElementById('btn-menu-flip-v').addEventListener('click', () => flipLayer(false));
-    document.getElementById('btn-menu-rotate-cw').addEventListener('click', rotate90);
+    on('btn-menu-grayscale', 'click', () => applyQuickFilter('grayscale'));
+    on('btn-menu-invert', 'click', () => applyQuickFilter('invert'));
+    on('btn-menu-sepia', 'click', () => applyQuickFilter('sepia'));
+    on('btn-menu-flip-h', 'click', () => flipLayer(true));
+    on('btn-menu-flip-v', 'click', () => flipLayer(false));
+    on('btn-menu-rotate-cw', 'click', rotate90);
 
-    document.getElementById('btn-filter-blur').addEventListener('click', () => applyColorAdjustments(0, 0, 100, 6));
-    document.getElementById('btn-filter-sharpen').addEventListener('click', () => applyQuickFilter('sharpen'));
-    document.getElementById('btn-filter-edge').addEventListener('click', () => applyQuickFilter('edges'));
-    document.getElementById('btn-filter-emboss').addEventListener('click', () => applyQuickFilter('emboss'));
+    on('btn-filter-blur', 'click', () => applyColorAdjustments(0, 0, 100, 6));
+    on('btn-filter-sharpen', 'click', () => applyQuickFilter('sharpen'));
+    on('btn-filter-edge', 'click', () => applyQuickFilter('edges'));
+    on('btn-filter-emboss', 'click', () => applyQuickFilter('emboss'));
 
-    document.getElementById('btn-view-zoomin').addEventListener('click', () => updateZoom(state.zoom * 1.25));
-    document.getElementById('btn-view-zoomout').addEventListener('click', () => updateZoom(state.zoom * 0.8));
-    document.getElementById('btn-view-fit').addEventListener('click', () => {
-      const rw = (dom.scrollWrapper.clientWidth - 40) / state.width;
-      const rh = (dom.scrollWrapper.clientHeight - 40) / state.height;
-      updateZoom(Math.min(rw, rh));
-    });
-    document.getElementById('btn-view-100').addEventListener('click', () => updateZoom(1.0));
+    on('btn-view-zoomin', 'click', () => updateZoom(state.zoom * 1.25));
+    on('btn-view-zoomout', 'click', () => updateZoom(state.zoom * 0.8));
+    on('btn-view-fit', 'click', () => fitCanvasToScreen());
+    on('btn-view-100', 'click', () => updateZoom(1.0));
 
     // Modals
-    document.getElementById('btn-menu-new').addEventListener('click', () => dom.modalNewDoc.style.display = 'flex');
-    document.getElementById('btn-close-new-doc').addEventListener('click', () => dom.modalNewDoc.style.display = 'none');
-    document.getElementById('btn-cancel-new-doc').addEventListener('click', () => dom.modalNewDoc.style.display = 'none');
-    document.getElementById('preset-size-select').addEventListener('change', (e) => {
+    on('btn-menu-new', 'click', () => { if (dom.modalNewDoc) dom.modalNewDoc.style.display = 'flex'; });
+    on('btn-close-new-doc', 'click', () => { if (dom.modalNewDoc) dom.modalNewDoc.style.display = 'none'; });
+    on('btn-cancel-new-doc', 'click', () => { if (dom.modalNewDoc) dom.modalNewDoc.style.display = 'none'; });
+    on('preset-size-select', 'change', (e) => {
       if (e.target.value !== 'custom') {
         const [w, h] = e.target.value.split('x').map(Number);
-        document.getElementById('new-doc-width').value = w;
-        document.getElementById('new-doc-height').value = h;
+        const wInp = document.getElementById('new-doc-width');
+        const hInp = document.getElementById('new-doc-height');
+        if (wInp) wInp.value = w;
+        if (hInp) hInp.value = h;
       }
     });
-    document.getElementById('btn-confirm-new-doc').addEventListener('click', () => {
-      const w = parseInt(document.getElementById('new-doc-width').value) || 1280;
-      const h = parseInt(document.getElementById('new-doc-height').value) || 720;
-      const bg = document.getElementById('new-doc-bg').value;
+    on('btn-confirm-new-doc', 'click', () => {
+      const w = parseInt(document.getElementById('new-doc-width')?.value) || 360;
+      const h = parseInt(document.getElementById('new-doc-height')?.value) || 640;
+      const bg = document.getElementById('new-doc-bg')?.value || 'white';
       const fillColor = (bg === 'white') ? '#ffffff' : (bg === 'black' ? '#000000' : null);
 
       state.layers = [];
       resizeDocument(w, h, false);
       createNewLayer('Latar Belakang', fillColor);
-      dom.modalNewDoc.style.display = 'none';
+      if (dom.modalNewDoc) dom.modalNewDoc.style.display = 'none';
+      setTimeout(() => fitCanvasToScreen(), 100);
       showToast(`Dokumen baharu dicipta (${w}×${h} px)`, 'success');
     });
 
-    document.getElementById('btn-menu-resize').addEventListener('click', () => {
-      document.getElementById('resize-width').value = state.width;
-      document.getElementById('resize-height').value = state.height;
-      dom.modalResize.style.display = 'flex';
+    on('btn-menu-resize', 'click', () => {
+      const rw = document.getElementById('resize-width');
+      const rh = document.getElementById('resize-height');
+      if (rw) rw.value = state.width;
+      if (rh) rh.value = state.height;
+      if (dom.modalResize) dom.modalResize.style.display = 'flex';
     });
-    document.getElementById('btn-close-resize').addEventListener('click', () => dom.modalResize.style.display = 'none');
-    document.getElementById('btn-cancel-resize').addEventListener('click', () => dom.modalResize.style.display = 'none');
-    document.getElementById('btn-confirm-resize').addEventListener('click', () => {
-      const w = parseInt(document.getElementById('resize-width').value) || state.width;
-      const h = parseInt(document.getElementById('resize-height').value) || state.height;
-      const scaleContent = document.getElementById('resize-scale-content').checked;
+    on('btn-close-resize', 'click', () => { if (dom.modalResize) dom.modalResize.style.display = 'none'; });
+    on('btn-cancel-resize', 'click', () => { if (dom.modalResize) dom.modalResize.style.display = 'none'; });
+    on('btn-confirm-resize', 'click', () => {
+      const w = parseInt(document.getElementById('resize-width')?.value) || state.width;
+      const h = parseInt(document.getElementById('resize-height')?.value) || state.height;
+      const scaleContent = document.getElementById('resize-scale-content')?.checked ?? true;
       resizeDocument(w, h, scaleContent);
-      dom.modalResize.style.display = 'none';
+      if (dom.modalResize) dom.modalResize.style.display = 'none';
+      setTimeout(() => fitCanvasToScreen(), 100);
     });
 
     // Drag and Drop
@@ -1969,10 +2085,10 @@
           'i': 'eyedropper', 'h': 'hand', 'z': 'zoom'
         };
         if (toolMap[key]) {
-          const btn = document.querySelector(`.tool-btn[data-tool="${toolMap[key]}"]`);
-          if (btn) btn.click();
+          setActiveTool(toolMap[key]);
         } else if (key === 'x') {
-          document.getElementById('btn-swap-colors').click();
+          const swapBtn = document.getElementById('btn-swap-colors');
+          if (swapBtn) swapBtn.click();
         }
       }
     });
@@ -1986,9 +2102,22 @@
     setupEventListeners();
     setupConverterHub();
 
-    resizeDocument(1280, 720, false);
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      // Set responsive initial canvas size for mobile screens
+      const mobW = Math.max(320, Math.min(window.innerWidth - 24, 480));
+      const mobH = Math.max(480, Math.min(window.innerHeight - 180, 720));
+      resizeDocument(mobW, mobH, false);
+    } else {
+      resizeDocument(1280, 720, false);
+    }
+
     createNewLayer('Latar Belakang', '#ffffff');
     saveHistory('Buka Dokumen Baharu');
+
+    setTimeout(() => {
+      fitCanvasToScreen();
+    }, 150);
 
     showToast('Selamat datang ke Lumina PhotoStudio Pro!', 'success');
   }
